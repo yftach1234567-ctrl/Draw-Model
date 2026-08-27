@@ -1,0 +1,139 @@
+import streamlit as st
+import requests
+from datetime import date
+
+st.set_page_config(
+    page_title="Draw-Model V2",
+    page_icon="⚽",
+    layout="wide"
+)
+
+st.title("⚽ Draw-Model V2")
+st.write("מודל סטטיסטי לזיהוי משחקים בעלי פוטנציאל לתיקו")
+
+# --------------------------------------------------
+# API SETTINGS
+# --------------------------------------------------
+
+API_URL = "https://v3.football.api-sports.io"
+
+try:
+    API_KEY = st.secrets["API_FOOTBALL_KEY"]
+except Exception:
+    API_KEY = None
+
+
+# --------------------------------------------------
+# API FUNCTION
+# --------------------------------------------------
+
+def api_get(endpoint, params=None):
+
+    if not API_KEY:
+        st.error("API Key לא הוגדר עדיין ב-Streamlit Secrets.")
+        return None
+
+    headers = {
+        "x-apisports-key": API_KEY
+    }
+
+    try:
+        response = requests.get(
+            API_URL + endpoint,
+            headers=headers,
+            params=params,
+            timeout=20
+        )
+
+        data = response.json()
+
+        if data.get("errors"):
+            st.error(f"שגיאת API: {data['errors']}")
+            return None
+
+        return data
+
+    except Exception as e:
+        st.error(f"שגיאה בחיבור ל-API: {e}")
+        return None
+
+
+# --------------------------------------------------
+# TEST API CONNECTION
+# --------------------------------------------------
+
+st.subheader("🔌 חיבור ל-API-Football")
+
+if st.button("בדוק חיבור ל-API"):
+
+    data = api_get("/countries")
+
+    if data:
+
+        st.success("✅ החיבור ל-API עובד!")
+
+        st.write(
+            f"נמצאו {data.get('results', 0)} מדינות."
+        )
+
+
+# --------------------------------------------------
+# TODAY'S FIXTURES
+# --------------------------------------------------
+
+st.subheader("📅 משחקי היום")
+
+today = date.today().isoformat()
+
+if st.button("🔄 טען משחקי היום"):
+
+    data = api_get(
+        "/fixtures",
+        {
+            "date": today
+        }
+    )
+
+    if data:
+
+        fixtures = data.get("response", [])
+
+        st.success(
+            f"נמצאו {len(fixtures)} משחקים."
+        )
+
+        for fixture in fixtures:
+
+            teams = fixture["teams"]
+
+            home = teams["home"]["name"]
+            away = teams["away"]["name"]
+
+            league = fixture["league"]["name"]
+
+            st.write(
+                f"⚽ **{home} – {away}**"
+            )
+
+            st.caption(league)
+
+            st.divider()
+
+
+# --------------------------------------------------
+# DRAW MODEL - FIRST VERSION
+# --------------------------------------------------
+
+st.subheader("📊 Draw Model")
+
+st.info(
+    "בשלב הבא נוסיף כאן את המודל המלא: "
+    "כושר, H2H, בית/חוץ, תיקו במחצית, "
+    "X/X, שערים, חיסורים וגומלינים."
+)
+
+st.write("### גרסת V2 – שלב חיבור הנתונים")
+st.write(
+    "המערכת מחוברת ל-API-Football ומוכנה "
+    "לקבלת נתוני משחקים."
+)
